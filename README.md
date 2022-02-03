@@ -1,23 +1,25 @@
-# Homeassistant MQTT Binding for python
+# Homeassistant MQTT for python with discovery
+
+This project is a fork from https://gitlab.com/anphi/homeassistant-mqtt-binding with some changes in the logic.
 
 This package enables you to implement arbitrary devices in python supported in homeassistant. The communication with
 homeassistant is handled by MQTT. For example you could write an simple program running on a raspberry pi controlling an
 LED. By exposing this configuration to homeassistant you can easily control the LED via HA.
 
-The base class handles the following things automatically:
+The base class handles the following things:
 
-* registering devices in homeassistant through the mqtt discovery protocol
+* registering devices in homeassistant through the mqtt discovery protocol by using the <config> topic
 * setting the device as available once fully setup
 * setting the device unavailable when quitting the application
 
 ### Installation
 
-`python3 -m pip install homeassistant-mqtt-binding`
+`python3 -m pip install homeassistant-mqtt-devices`
 the dependencies should be installed automatically
 
 ### Usage
 
-1. create an paho mqtt Client instance connected to your mqtt server
+1. create an paho mqtt Client instance connected to your mqtt server, possibly within a try / restart loop to handle disconnections.
 2. instantiate your desired device and pass the Client instance to the constructor
 3. when your program closes make sure to call the `close()` function of each device for cleanup
 
@@ -28,6 +30,8 @@ See the [examples](https://gitlab.com/anphi/homeassistant-mqtt-binding/HaMqtt/ex
 
 * switch.py:
   simple switch device that can be toggled by homeassistant
+* temperature.py:
+  simple sensor device that pushed info to homeassistant
 
 ### Expanding the application
 
