@@ -56,6 +56,10 @@ sw2.callback_off = lambda: off(sw2, 2)
 sw3.callback_on = lambda: on(sw3, 3)
 sw3.callback_off = lambda: off(sw3, 3)
 
+sw1.send_discovery()
+sw2.send_discovery()
+sw3.send_discovery()
+
 try:
     while True:
         time.sleep(0.1)

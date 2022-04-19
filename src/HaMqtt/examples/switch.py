@@ -26,15 +26,15 @@ def on():
     # report back as switched on
     sw.set_on()
 
-
 def off():
     print("I got switched off")
     # report back as switched off
     sw.set_off()
 
-
 # instantiate an MQTTSwitch object
 sw = MQTTSwitch("sw2", "sw2", client)
+sw.send_discovery()
+
 
 # assign both callbacks
 sw.callback_on = on
