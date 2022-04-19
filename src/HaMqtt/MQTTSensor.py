@@ -1,16 +1,17 @@
 import uuid
-
 from paho.mqtt.client import Client
+import MQTTDevice
 
-from .MQTTDevice import MQTTDevice
-from .MQTTUtil import HaDeviceClass
-
-
-class MQTTSensor(MQTTDevice):
+class MQTTSensor(MQTTDevice.MQTTDevice):
     device_type = "sensor"
-
-    def __init__(self, name: str, node_id: str, client: Client, unit: str, device_class: HaDeviceClass,
-                 unique_id=str(uuid.uuid4()), device_dict: dict = None):
+    def __init__(self,
+                 name: str,
+                 node_id: str,
+                 client: Client,
+                 unit: str,
+                 device_class: str,
+                 unique_id=str(uuid.uuid4()),
+                 device_dict: dict = None):
         """
         create sensor instance
         :param name: as in MQTTDevice
@@ -24,8 +25,8 @@ class MQTTSensor(MQTTDevice):
         """
         self.device_class = device_class
         self.unit_of_measurement = unit
-        super().__init__(name, node_id, client, True, unique_id, device_dict=device_dict)
+        super().__init__(name, node_id, client, unique_id, send_only=True, device_dict=device_dict)
 
     def initialize(self):
-        self.add_config_option("device_class", self.device_class.value)
+        self.add_config_option("device_class", self.device_class)
         self.add_config_option("unit_of_measurement", self.unit_of_measurement)

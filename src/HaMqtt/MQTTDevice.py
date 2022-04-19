@@ -1,10 +1,6 @@
-import json
-import logging
-import time
 import uuid
-
+import json
 from paho.mqtt.client import Client, MQTTMessage
-
 
 class MQTTDevice:
     """
@@ -16,8 +12,9 @@ class MQTTDevice:
     """
 
     base_topic = "homeassistant"
-    device_type = "sensor"
-    initial_state = 0
+    device_type = None
+    initial_state = None
+    discovery_sent = False
 
     @classmethod
     def set_basetopic(cls, topic: str) -> None:
@@ -29,7 +26,12 @@ class MQTTDevice:
         """
         MQTTDevice.base_topic = topic
 
-    def __init__(self, name: str, node_id: str, client: Client, send_only=False, unique_id=str(uuid.uuid4()),
+    def __init__(self,
+                 name: str,
+                 node_id: str,
+                 client: Client,
+                 unique_id=str(uuid.uuid4()),
+                 send_only=False,
                  device_dict=None):
         """
         initializes the mqtt device instance. Make sure to add more configuration in base_classes,
@@ -39,30 +41,26 @@ class MQTTDevice:
         :param client: paho mqtt client instance
         :param send_only: set this to True, if this Device only sends data to the broker, to
         disable all parts that subscribe to topics etc.
-        :param unique_id: unique id to identify this device against homeassistant
+        :param unique_id: unique id to identify this device against homeassistant. Default to random uuid.
         :param device_dict: dictionary containing device information to group mqtt entities to a device.
           see https://www.home-assistant.io/integrations/sensor.mqtt/#device for more info
 
         """
-        self.name = name
-        self.node_id = node_id
-        self.send_only = send_only
-        self._client = client
+        self.name           = name
+        self.node_id        = node_id
+        self.send_only      = send_only
+        self.client         = client
         assert type(unique_id) == str, "the unique ID must be a string"
-        self._unique_id = unique_id
-
-        self._logger = logging.getLogger(node_id)
-
-        self.base_topic = f"{self.__class__.base_topic}/{self.__class__.device_type}/{self.node_id}"
-        self.avail_topic = f"{self.base_topic}/available"
-        self.config_topic = f"{self.base_topic}/config"
-        self.state_topic = f"{self.base_topic}/state"
-
+        self._unique_id     = unique_id
+        self.base_topic     = f"{self.__class__.base_topic}/{self.__class__.device_type}/{self.node_id}"
+        self.avail_topic    = f"{self.base_topic}/available"
+        self.config_topic   = f"{self.base_topic}/config"
+        self.state_topic    = f"{self.base_topic}/state"
         self.conf_dict = {
-            'name': self.name,
-            'state_topic': self.state_topic,
+            'name':               self.name,
+            'state_topic':        self.state_topic,
             'availability_topic': self.avail_topic,
-            'unique_id': unique_id
+            'unique_id':          unique_id
         }
         if device_dict is not None:
             assert device_dict.get('connections') or device_dict.get('identifiers'), \
@@ -71,12 +69,10 @@ class MQTTDevice:
             self.conf_dict['device'] = device_dict
 
         if not send_only:
-            self._client.subscribe(self.state_topic)
-            self._client.message_callback_add(self.state_topic, self.state_callback)
+            self.client.subscribe(self.state_topic)
+            self.client.message_callback_add(self.state_topic, self.state_callback)
 
         self.initialize()
-
-        self._send_discovery()
 
     def close(self):
         """
@@ -84,7 +80,7 @@ class MQTTDevice:
         :return:
         """
         self.send_offline()
-        self._client.unsubscribe(f"{self.base_topic}/#")  # unsubscribe from all topics
+        self.client.unsubscribe(f"{self.base_topic}/#")  # unsubscribe from all topics
 
     def add_config_option(self, key: str, value: str):
         """
@@ -109,7 +105,10 @@ class MQTTDevice:
         :param payload: payload to publish
         :return:
         """
-        self._client.publish(self.state_topic, payload, retain=True)
+        if self.discovery_sent is False:
+             self.discovery_sent = True
+             self.send_discovery()
+        self.client.publish(self.state_topic, payload, retain=True)
 
     def state_callback(self, client: Client, userdata, msg: MQTTMessage):
         """
@@ -126,14 +125,14 @@ class MQTTDevice:
         send the available payload on the available channel
         :return:
         """
-        self._client.publish(self.avail_topic, 'online', qos=1, retain=True)
+        self.client.publish(self.avail_topic, 'online', qos=1, retain=True)
 
     def send_offline(self):
         """
         send the unavailable payload on the available channel
         :return:
         """
-        self._client.publish(self.avail_topic, 'offline', qos=1, retain=True)
+        self.client.publish(self.avail_topic, 'offline', qos=1, retain=True)
 
     def delete_config(self):
         """
@@ -143,15 +142,13 @@ class MQTTDevice:
         """
         self._client.publish(self.config_topic, "")
 
-    def _send_discovery(self, send_initial=True):
+    def send_discovery(self, send_initial=False):
         """
         sends discovery package to broker
         :param send_initial: determines if the classes' initital state should be sent or not
         :return:
         """
-        self._client.publish(self.config_topic, json.dumps(self.conf_dict), retain=True)
-        time.sleep(0.01)
+        self.client.publish(self.config_topic, json.dumps(self.conf_dict), retain=True)
         self.send_online()
-        self._logger.debug(f"sending config for {self.node_id}: {self.conf_dict}")
         if send_initial:
             self.publish_state(self.__class__.initial_state)

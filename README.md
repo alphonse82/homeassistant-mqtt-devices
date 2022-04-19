@@ -55,7 +55,7 @@ Since I don't use all devices I haven't implemented them yet. You can easily imp
 ### Modifications
 
 1. Devices Classes are given as str and not as classes, since in HomeAssistant there are added classes all the time. Default is "None".
-2. Dé-correlate the creation of the class and the sending of the "config" topic , to allow the user code to add or modify the conf_dict before sending it to MQTT
+2. Dé-correlate the creation of the class and the sending of the "config" topic , to allow the user code to add or modify the conf_dict before sending it to MQTT.
    Thus a "send_discovery()" shall be used before pushing data. However to keep compatibility, this method is call before the first call to "publish_state()" if it has not be done before.
 3. The send_discovery() is re-sent a periodic intervals (default is 30mn) - this is usefull when the MQTT server or HA become unreachable for a while.
 4. Default value for send_initial parameter is False : Sending a "0" value for some meters do impact statistical calculations

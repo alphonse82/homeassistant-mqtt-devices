@@ -1,15 +1,15 @@
 import uuid
-
 from paho.mqtt.client import Client
-
-from . import MQTTDevice, MQTTUtil
-
+import MQTTDevice
 
 class MQTTSwitch(MQTTDevice.MQTTDevice):
     device_type = "switch"
-    initial_state = MQTTUtil.OFF
-
-    def __init__(self, name: str, node_id: str, client: Client, unique_id: str = str(uuid.uuid4()),
+    initial_state = "off"
+    def __init__(self,
+                 name: str,
+                 node_id: str,
+                 client: Client,
+                 unique_id: str = str(uuid.uuid4()),
                  device_dict: dict = None):
         # internal tracker of the state
         self.state = self.__class__.initial_state
@@ -28,7 +28,7 @@ class MQTTSwitch(MQTTDevice.MQTTDevice):
         sends offline message and unsubscribes from all topics regarding this instance
         :return:
         """
-        self._client.unsubscribe(self.cmd_topic)
+        self.client.unsubscribe(self.cmd_topic)
         super(MQTTSwitch, self).close()
 
     def initialize(self):
@@ -42,8 +42,8 @@ class MQTTSwitch(MQTTDevice.MQTTDevice):
         self.add_config_option("payload_on", 'on')
 
         if not self.send_only:
-            self._client.subscribe(self.cmd_topic)
-            self._client.message_callback_add(self.cmd_topic, self.command_callback)
+            self.client.subscribe(self.cmd_topic)
+            self.client.message_callback_add(self.cmd_topic, self.command_callback)
 
     def set_on(self):
         """
@@ -51,7 +51,7 @@ class MQTTSwitch(MQTTDevice.MQTTDevice):
         :return:
         """
         self.state = True
-        self.publish_state(MQTTUtil.ON)
+        self.publish_state("on")
 
     def set_off(self):
         """
@@ -59,7 +59,7 @@ class MQTTSwitch(MQTTDevice.MQTTDevice):
         :return:
         """
         self.state = False
-        self.publish_state(MQTTUtil.OFF)
+        self.publish_state("off")
 
     def set(self, state: bool):
         """
@@ -80,9 +80,8 @@ class MQTTSwitch(MQTTDevice.MQTTDevice):
         :param msg: actual message sent
         :return:
         """
-        if msg.payload == MQTTUtil.ON:
+        payload = "".join( chr(x) for x in msg.payload)
+        if payload == "on":
             self.callback_on()
-        elif msg.payload == MQTTUtil.OFF:
+        elif payload == "off":
             self.callback_off()
-        else:
-            self._logger.warn(f"got invalid payload as command: {msg.payload}")
